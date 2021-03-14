@@ -1,0 +1,3 @@
+F:/Programacao/CParalelaUfrgs2020_2/2.2.2SomaForLacoReducao/cmake-build-debug/CMakeFiles/2_2_2SomaForLacoReducao.dir
+F:/Programacao/CParalelaUfrgs2020_2/2.2.2SomaForLacoReducao/cmake-build-debug/CMakeFiles/edit_cache.dir
+F:/Programacao/CParalelaUfrgs2020_2/2.2.2SomaForLacoReducao/cmake-build-debug/CMakeFiles/rebuild_cache.dir
