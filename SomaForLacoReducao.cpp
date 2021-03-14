@@ -1,32 +1,52 @@
 #include <omp.h>
 #include <cstdio>
-#include <math.h>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 
-#define NumThreads 8
+using namespace std;
 
+#define NumThreads 8
 int n = 100000000;
-int s = 0;
+int s;
 char caracter;
 int M1[NumThreads];
 int M2[NumThreads];
-using namespace std;
+
+int tid;
+int nt;
+int ini;
+int fim;
+int id;
+int st;
 
 int main(int argc, char *argv[]) {
 
     omp_set_num_threads(NumThreads);
-#pragma omp parallel
+    s = 0;
+    // inicializa o vetor
+    for (int i = 0; i < NumThreads; i++)
+        M1[i] = 0;
+/**/
+#pragma omp parallel default(none) shared(nt, M1, M2, n, s) private(tid, ini, fim)
     {
-        int tid = omp_get_thread_num();
-        int nt = omp_get_num_threads();
-        int ini = n / nt * tid;
-        int fim = n / nt * (tid + 1);
+        tid = omp_get_thread_num();
+        nt = omp_get_num_threads();
+        ini = tid * (n / nt);
+        fim = (tid + 1) * (n / nt);
         // Nesta parte do código tid,nt,ini e fim são variáveis privadas.
         if (tid == nt - 1)
             fim = n;
-        for (int i = ini; i < fim; i++)
+
+        /* Cada thread tem o seu for e em cada um destes for o i varia
+         * de ini a fim, mas cada ini e fim é diferente para cada thread. */
+        for (int i = ini; i < fim; i++) {
             s += 1;
+            int id = omp_get_thread_num();
+            M1[id] = M1[id] + 1;
+            M2[id] = i;
+
+        }
     }
     /*
      * O erro do código está na condição de corrida (race condition) na linha 28.
@@ -34,6 +54,8 @@ int main(int argc, char *argv[]) {
      * mesma thread, antes que outro possa iniciá-la.
      */
     printf("\n Soma(errada por causa do race condition na variavel shared s) = %d", s);
+    for (int i = 0; i < NumThreads; i++)
+        printf("\n M1[%d]=%d    M2[%d]=%d", i, M1[i], i, M2[i]);
 
     /*
      * Solução 1:
@@ -43,24 +65,38 @@ int main(int argc, char *argv[]) {
      Observação 2.2.3. A utilização do construtor #pragma omp critical
      reduz a performance do código e só deve ser usada quando realmente necessária.
      * */
+
     s = 0;
-#pragma omp parallel
+    // inicializa o vetor
+    for (int i = 0; i < NumThreads; i++)
+        M1[i] = 0;
+
+#pragma omp parallel default(none) shared(nt, M1, M2, n, s) private(tid, ini, fim)
     {
-        int tid = omp_get_thread_num();
-        int nt = omp_get_num_threads();
-        int ini = n / nt * tid;
-        int fim = n / nt * (tid + 1);
+        tid = omp_get_thread_num();
+        nt = omp_get_num_threads();
+        ini = n / nt * tid;
+        fim = n / nt * (tid + 1);
         if (tid == nt - 1)
             fim = n;
 
-        int st = 0;
-        for (int i = ini; i < fim; i++)
+        int st = 0; // st é private
+        /* Cada thread tem o seu for e em cada um destes for o i varia
+         * de ini a fim, mas cada ini e fim é diferente para cada thread. */
+        for (int i = ini; i < fim; i++) {// Cada thread faz o seu pedaço
             st += 1;
+            int id = omp_get_thread_num();
+            M1[id] = M1[id] + 1;
+            M2[id] = i;
+        }
         // Nesta parte do código tid, nt,ini,fim,i e st são variáveis privadas.
 #pragma omp critical
-        s += st;
+        s += st; //soma o valor de st de cada thread a s
     }
-    printf("\n Soma usando critical = %d", s);
+    printf("\n\n Soma usando critical = %d", s);
+    for (int i = 0; i < NumThreads; i++)
+        printf("\n M1[%d]=%d    M2[%d]=%d", i, M1[i], i, M2[i]);
+
 
     /*
     Solução 2:
@@ -75,13 +111,13 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < NumThreads; i++)
         M1[i] = 0;
 
-#pragma omp parallel
+#pragma omp parallel default(none) shared(M1, M2, n, s) private(st,id)
     {
-        int st = 0; // st é variável private(cada thread, possui a sua)
+        st = 0; // st é variável private(cada thread, possui a sua)
 
 #pragma omp for
-        for (int i = 1; i <= n; i++) {
-            int id = omp_get_thread_num();
+        for (int i = 0; i < n; i++) {
+            id = omp_get_thread_num();
             M1[id] = M1[id] + 1;
             M2[id] = i;
             st += 1;
@@ -90,8 +126,8 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
         s += st; //Soma o st de cada thread, s=s+st
     }
-    printf("\n Soma usando critical e for = %d", s);
 
+    printf("\n\n Soma usando critical e for = %d", s);
     for (int i = 0; i < NumThreads; i++)
         printf("\n M1[%d]=%d    M2[%d]=%d", i, M1[i], i, M2[i]);
 
